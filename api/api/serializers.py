@@ -2,6 +2,11 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
+
+from .models import Greenhouse
+
+
+
 User = get_user_model()
 
 
@@ -43,3 +48,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'company', 'phone_number', 'date_joined')
         read_only_fields = ('id', 'date_joined')
+
+
+class GreenhouseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Greenhouse
+        fields = ('id', 'user', 'name', 'description', 'longitude', 'latitude')
+        read_only_fields = ('id','user')
+
+
+
+        

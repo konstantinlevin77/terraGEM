@@ -79,3 +79,31 @@ class AuthAPITests(TestCase):
         self.assertEqual(auth_res.status_code, status.HTTP_200_OK)
         self.assertEqual(auth_res.data['username'], 'testuser')
         self.assertEqual(auth_res.data['email'], 'testuser@example.com')
+
+
+class GreenhouseAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='grower1',
+            email='grower1@example.com',
+            password='StrongPassword123!'
+        )
+        self.client.force_authenticate(user=self.user)
+        self.list_url = reverse('greenhouse-list')
+
+    def test_create_and_list_greenhouse(self):
+        payload = {
+            'user': self.user.id,
+            'name': 'Tomato Bay',
+            'description': 'Main greenhouse for tomatoes',
+            'longitude': 28.9784,
+            'latitude': 41.0082,
+        }
+        res = self.client.post(self.list_url, payload, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['name'], 'Tomato Bay')
+
+        list_res = self.client.get(self.list_url)
+        self.assertEqual(list_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(list_res.data), 1)
