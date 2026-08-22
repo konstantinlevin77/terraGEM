@@ -1,10 +1,10 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
-from .serializers import UserRegistrationSerializer, UserProfileSerializer
+from .serializers import SensorSerializer, UserRegistrationSerializer, UserProfileSerializer
 
 from rest_framework import viewsets
-from .models import Greenhouse
+from .models import Greenhouse, Sensor
 from .serializers import GreenhouseSerializer
 
 User = get_user_model()
@@ -51,3 +51,18 @@ class GreenhouseViewSet(viewsets.ModelViewSet):
             serializer.save()
         else:
             serializer.save(user=self.request.user)
+
+
+class SensorViewSet(viewsets.ModelViewSet):
+    queryset = Sensor.objects.all()
+    serializer_class = SensorSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+            # Admins/Staff can see and manage all greenhouses
+            if self.request.user.is_staff:
+                return Sensor.objects.all()
+            # Regular users only see their own
+            return Sensor.objects.filter(greenhouse__user=self.request.user)
+    
+

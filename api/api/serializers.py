@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
 
-from .models import Greenhouse
+from .models import Greenhouse, Sensor
 
 
 
@@ -25,7 +25,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'password_confirm', 'first_name', 'last_name')
+        fields = ('id', 'username', 'email', 'password', 'password_confirm', 'first_name', 'last_name',)
         extra_kwargs = {
             'email': {'required': True},
             'first_name': {'required': False},
@@ -46,15 +46,29 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'company', 'phone_number', 'date_joined')
-        read_only_fields = ('id', 'date_joined')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'company', 'phone_number', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'created_at', 'updated_at')
 
 
 class GreenhouseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Greenhouse
-        fields = ('id', 'user', 'name', 'description', 'longitude', 'latitude')
-        read_only_fields = ('id','user')
+        fields = ('id', 'user', 'name', 'description', 'longitude', 'latitude','created_at','updated_at')
+        read_only_fields = ('id','user','created_at','updated_at')
+
+
+class SensorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Sensor 
+        fields = ('id','greenhouse','sensor_type','is_active','description','created_at','updated_at')
+        read_only_fields = ('id','created_at','updated_at')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only allow selecting greenhouses owned by the logged-in user (unless admin)
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and not request.user.is_staff:
+            self.fields['greenhouse'].queryset = Greenhouse.objects.filter(user=request.user)
 
 
 
