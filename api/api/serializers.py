@@ -3,8 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
 
-from .models import Greenhouse, Sensor
-
+from .models import Greenhouse, Sensor, SensorMeasurement
 
 
 User = get_user_model()
@@ -69,6 +68,20 @@ class SensorSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated and not request.user.is_staff:
             self.fields['greenhouse'].queryset = Greenhouse.objects.filter(user=request.user)
+
+
+class SensorMeasurementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SensorMeasurement
+        fields = ('id', 'sensor', 'value', 'measurement_time', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only allow selecting sensors owned by the logged-in user (unless admin)
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and not request.user.is_staff:
+            self.fields['sensor'].queryset = Sensor.objects.filter(greenhouse__user=request.user)
 
 
 

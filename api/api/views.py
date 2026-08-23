@@ -1,11 +1,16 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
-from .serializers import SensorSerializer, UserRegistrationSerializer, UserProfileSerializer
+from .serializers import (
+    SensorSerializer,
+    UserRegistrationSerializer,
+    UserProfileSerializer,
+    GreenhouseSerializer,
+    SensorMeasurementSerializer,
+)
 
 from rest_framework import viewsets
-from .models import Greenhouse, Sensor
-from .serializers import GreenhouseSerializer
+from .models import Greenhouse, Sensor, SensorMeasurement
 
 User = get_user_model()
 
@@ -59,10 +64,34 @@ class SensorViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-            # Admins/Staff can see and manage all greenhouses
-            if self.request.user.is_staff:
-                return Sensor.objects.all()
+        # Admins/Staff can see and manage all sensors
+        if self.request.user.is_staff:
+            queryset = Sensor.objects.all()
+        else:
             # Regular users only see their own
-            return Sensor.objects.filter(greenhouse__user=self.request.user)
-    
+            queryset = Sensor.objects.filter(greenhouse__user=self.request.user)
+
+        greenhouse_id = self.request.query_params.get('greenhouse')
+        if greenhouse_id:
+            queryset = queryset.filter(greenhouse_id=greenhouse_id)
+        return queryset
+
+
+class SensorMeasurementViewSet(viewsets.ModelViewSet):
+    queryset = SensorMeasurement.objects.all()
+    serializer_class = SensorMeasurementSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Admins/Staff can see and manage all measurements
+        if self.request.user.is_staff:
+            queryset = SensorMeasurement.objects.all()
+        else:
+            # Regular users only see measurements from their own greenhouses
+            queryset = SensorMeasurement.objects.filter(sensor__greenhouse__user=self.request.user)
+
+        sensor_id = self.request.query_params.get('sensor')
+        if sensor_id:
+            queryset = queryset.filter(sensor_id=sensor_id)
+        return queryset
 

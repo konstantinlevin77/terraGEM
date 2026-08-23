@@ -4,11 +4,18 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from .views import RegisterView, SensorViewSet, UserProfileView, GreenhouseViewSet
+from .views import (
+    RegisterView,
+    UserProfileView,
+    GreenhouseViewSet,
+    SensorViewSet,
+    SensorMeasurementViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'greenhouses', GreenhouseViewSet, basename='greenhouse')
-router.register(r'sensors',SensorViewSet,basename='sensor')
+router.register(r'sensors', SensorViewSet, basename='sensor')
+router.register(r'measurements', SensorMeasurementViewSet, basename='measurement')
 
 urlpatterns = [
     # Router endpoints (/api/greenhouses/, /api/greenhouses/<id>/)
