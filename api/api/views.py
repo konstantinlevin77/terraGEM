@@ -70,7 +70,7 @@ class GreenhouseViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True,methods=['get'])
-    def today(self,request,pk=None):
+    def today_summary(self,request,pk=None):
         gh = self.get_object()
         date = timezone.now().date()
         start_of_today = timezone.now().replace(hour=0,minute=0,second=0,microsecond=0)
