@@ -85,4 +85,37 @@ class SensorMeasurementSerializer(serializers.ModelSerializer):
 
 
 
-        
+class LatestMeasurementSerializer(serializers.ModelSerializer):
+    """
+    This serializer is for a custom /greenhouses/<id>/latest endpoint
+    """
+    class Meta:
+        model = SensorMeasurement
+        fields = ('id', 'value', 'measurement_time')
+
+
+class SensorWithLatestMeasurementSerializer(serializers.ModelSerializer):
+    """
+    This serializer is for one sensor and its latest measurement combined.
+    """
+    # DRF automatically looks for get_latest_measurement() function 
+    latest_measurement = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Sensor
+        fields = ('id','sensor_type','sensor_brand','unit','is_active','description','latest_measurement')
+
+    def get_latest_measurement(self,obj):
+        latest = obj.measurements.first()
+        if latest is not None:
+            return LatestMeasurementSerializer(latest).data
+        return None
+
+
+class GreenhouseLatestSerializer(serializers.ModelSerializer):
+    sensors = SensorWithLatestMeasurementSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Greenhouse
+        fields = ('id','name','description','sensors','longitude','latitude')
+    

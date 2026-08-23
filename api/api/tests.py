@@ -108,6 +108,86 @@ class GreenhouseAPITests(TestCase):
         self.assertEqual(list_res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(list_res.data), 1)
 
+    def test_greenhouse_latest_endpoint_success(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import (
+            Greenhouse,
+            Sensor,
+            SensorMeasurement,
+            SensorTypeChoices,
+            SensorBrandChoices,
+            UnitChoices,
+        )
+
+        gh = Greenhouse.objects.create(user=self.user, name='Pepper House')
+        sensor1 = Sensor.objects.create(
+            greenhouse=gh,
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            sensor_brand=SensorBrandChoices.DS18B20,
+            unit=UnitChoices.CELSIUS,
+            is_active=True
+        )
+        sensor2 = Sensor.objects.create(
+            greenhouse=gh,
+            sensor_type=SensorTypeChoices.AIR_HUM,
+            unit=UnitChoices.PERCENT,
+            is_active=True
+        )
+
+        # Create older measurement and newer measurement for sensor1
+        now = timezone.now()
+        SensorMeasurement.objects.create(
+            sensor=sensor1,
+            value=18.5,
+            measurement_time=now - timedelta(minutes=15)
+        )
+        SensorMeasurement.objects.create(
+            sensor=sensor1,
+            value=26.4,
+            measurement_time=now
+        )
+        # sensor2 intentionally has no measurements
+
+        latest_url = reverse('greenhouse-latest', kwargs={'pk': gh.pk})
+        res = self.client.get(latest_url)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['id'], gh.id)
+        self.assertEqual(res.data['name'], 'Pepper House')
+        self.assertEqual(len(res.data['sensors']), 2)
+
+        # Verify sensor1 has the latest reading (26.4, not 18.5)
+        s1_data = next(s for s in res.data['sensors'] if s['id'] == sensor1.id)
+        self.assertIsNotNone(s1_data['latest_measurement'])
+        self.assertEqual(s1_data['latest_measurement']['value'], 26.4)
+        self.assertEqual(s1_data['sensor_type'], SensorTypeChoices.AIR_TEMP)
+
+        # Verify sensor2 has None for latest_measurement
+        s2_data = next(s for s in res.data['sensors'] if s['id'] == sensor2.id)
+        self.assertIsNone(s2_data['latest_measurement'])
+
+    def test_greenhouse_latest_endpoint_isolation_and_auth(self):
+        from .models import Greenhouse
+
+        user2 = User.objects.create_user(
+            username='othergrower',
+            email='other@example.com',
+            password='Password123!'
+        )
+        other_gh = Greenhouse.objects.create(user=user2, name='Secret House')
+        latest_url = reverse('greenhouse-latest', kwargs={'pk': other_gh.pk})
+
+        # User1 cannot access user2's greenhouse -> 404 Not Found
+        res = self.client.get(latest_url)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Unauthenticated user -> 401 Unauthorized
+        self.client.logout()
+        unauth_res = self.client.get(latest_url)
+        self.assertEqual(unauth_res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
 
 class SensorAndMeasurementAPITests(TestCase):
     def setUp(self):

@@ -7,7 +7,11 @@ from .serializers import (
     UserProfileSerializer,
     GreenhouseSerializer,
     SensorMeasurementSerializer,
+    GreenhouseLatestSerializer
 )
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
 
 from rest_framework import viewsets
 from .models import Greenhouse, Sensor, SensorMeasurement
@@ -56,6 +60,12 @@ class GreenhouseViewSet(viewsets.ModelViewSet):
             serializer.save()
         else:
             serializer.save(user=self.request.user)
+
+    @action(detail=True,methods=['get'])
+    def latest(self,request,pk=None):
+        gh = self.get_object()
+        serializer = GreenhouseLatestSerializer(gh)
+        return Response(serializer.data)
 
 
 class SensorViewSet(viewsets.ModelViewSet):
