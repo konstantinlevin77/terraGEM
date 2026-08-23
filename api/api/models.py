@@ -37,13 +37,40 @@ class Greenhouse(models.Model):
         return self.name or f"Greenhouse #{self.pk}"
 
 
+class SensorTypeChoices(models.TextChoices):
+    SOIL_TEMP = "soil_temperature"
+    SOIL_HUM = "soil_humidity"
+    AIR_TEMP = "air_temperature"
+    AIR_HUM = "air_humidity"
+    CO2 = "co2"                       
+    PH = "ph"                         
+    LIGHT = "light_intensity"        
+    NOT_SPEC = "not_specified"
+
+
+class SensorBrandChoices(models.TextChoices):
+    DS18B20 = "DS18B20"
+    RESISTIVE_SOIL_HUM = "resistive_soil_hum"
+    NOT_SPEC = "not_specified"
+
+class UnitChoices(models.TextChoices):
+    CELSIUS = "celsius"
+    PERCENT = "percent"
+    PPM = "ppm"
+    PH = "ph"
+    NOT_SPEC = "not_specified"
+
+
 class Sensor(models.Model):
     greenhouse = models.ForeignKey(
         Greenhouse,
         on_delete=models.CASCADE,
         related_name="sensors"
     )
-    sensor_type = models.CharField(max_length=50, default='')
+    sensor_type = models.CharField(max_length=50,choices=SensorTypeChoices, default=SensorTypeChoices.NOT_SPEC)
+    sensor_brand = models.CharField(max_length=50,choices=SensorBrandChoices,default=SensorBrandChoices.NOT_SPEC)
+    unit = models.CharField(max_length=20,choices=UnitChoices,default=UnitChoices.NOT_SPEC)
+
     is_active = models.BooleanField(default=False)
     description = models.CharField(max_length=200, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)  # Set once when created

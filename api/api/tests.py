@@ -128,17 +128,35 @@ class SensorAndMeasurementAPITests(TestCase):
             password='AdminPassword123!'
         )
 
-        from .models import Greenhouse, Sensor, SensorMeasurement
+        from .models import (
+            Greenhouse,
+            Sensor,
+            SensorMeasurement,
+            SensorTypeChoices,
+            SensorBrandChoices,
+            UnitChoices,
+        )
         self.greenhouse1 = Greenhouse.objects.create(user=self.user1, name='GH 1')
         self.greenhouse2 = Greenhouse.objects.create(user=self.user2, name='GH 2')
 
-        self.sensor1 = Sensor.objects.create(greenhouse=self.greenhouse1, sensor_type='temperature')
-        self.sensor2 = Sensor.objects.create(greenhouse=self.greenhouse2, sensor_type='humidity')
+        self.sensor1 = Sensor.objects.create(
+            greenhouse=self.greenhouse1,
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            sensor_brand=SensorBrandChoices.DS18B20,
+            unit=UnitChoices.CELSIUS
+        )
+        self.sensor2 = Sensor.objects.create(
+            greenhouse=self.greenhouse2,
+            sensor_type=SensorTypeChoices.AIR_HUM,
+            unit=UnitChoices.PERCENT
+        )
 
         self.sensors_url = reverse('sensor-list')
         self.measurements_url = reverse('measurement-list')
 
     def test_sensor_creation_and_isolation(self):
+        from .models import SensorTypeChoices, SensorBrandChoices, UnitChoices
+
         self.client.force_authenticate(user=self.user1)
 
         # List sensors -> user1 only sees sensor1
@@ -146,19 +164,34 @@ class SensorAndMeasurementAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data), 1)
         self.assertEqual(res.data[0]['id'], self.sensor1.id)
+        self.assertEqual(res.data[0]['sensor_type'], SensorTypeChoices.AIR_TEMP)
+        self.assertEqual(res.data[0]['sensor_brand'], SensorBrandChoices.DS18B20)
+        self.assertEqual(res.data[0]['unit'], UnitChoices.CELSIUS)
 
         # Create sensor attached to greenhouse1 -> Success
         post_res = self.client.post(self.sensors_url, {
             'greenhouse': self.greenhouse1.id,
-            'sensor_type': 'soil_moisture',
+            'sensor_type': SensorTypeChoices.SOIL_HUM,
+            'sensor_brand': SensorBrandChoices.RESISTIVE_SOIL_HUM,
+            'unit': UnitChoices.PERCENT,
             'is_active': True,
         }, format='json')
         self.assertEqual(post_res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(post_res.data['sensor_type'], SensorTypeChoices.SOIL_HUM)
+        self.assertEqual(post_res.data['sensor_brand'], SensorBrandChoices.RESISTIVE_SOIL_HUM)
+        self.assertEqual(post_res.data['unit'], UnitChoices.PERCENT)
+
+        # Invalid choice validation -> 400 Bad Request
+        invalid_choice_res = self.client.post(self.sensors_url, {
+            'greenhouse': self.greenhouse1.id,
+            'sensor_type': 'invalid_unknown_type',
+        }, format='json')
+        self.assertEqual(invalid_choice_res.status_code, status.HTTP_400_BAD_REQUEST)
 
         # Cannot attach sensor to user2's greenhouse -> 400 Bad Request
         bad_post = self.client.post(self.sensors_url, {
             'greenhouse': self.greenhouse2.id,
-            'sensor_type': 'co2',
+            'sensor_type': SensorTypeChoices.CO2,
         }, format='json')
         self.assertEqual(bad_post.status_code, status.HTTP_400_BAD_REQUEST)
 

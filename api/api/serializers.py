@@ -59,7 +59,7 @@ class GreenhouseSerializer(serializers.ModelSerializer):
 class SensorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sensor 
-        fields = ('id','greenhouse','sensor_type','is_active','description','created_at','updated_at')
+        fields = ('id','greenhouse','sensor_type','sensor_brand','unit','is_active','description','created_at','updated_at')
         read_only_fields = ('id','created_at','updated_at')
 
     def __init__(self, *args, **kwargs):
