@@ -96,3 +96,94 @@ class SensorMeasurement(models.Model):
 
     def __str__(self):
         return f"{self.sensor.sensor_type}: {self.value} @ {self.measurement_time}"
+
+
+class SeverityLevel(models.TextChoices):
+    WARNING = 'warning', 
+    CRITICAL = 'critical'
+
+
+
+class SensorThreshold(models.Model):
+    sensor = models.OneToOneField(
+        Sensor,
+        on_delete=models.CASCADE,
+        related_name="threshold"
+    )
+
+    # Inner band: Warning limits (mild breach)
+    warning_min = models.FloatField(null=True, blank=True, help_text="Below this triggers a Warning")
+    warning_max = models.FloatField(null=True, blank=True, help_text="Above this triggers a Warning")
+
+    # Outer band: Critical limits (severe danger)
+    critical_min = models.FloatField(null=True, blank=True, help_text="Below this triggers Critical")
+    critical_max = models.FloatField(null=True, blank=True, help_text="Above this triggers Critical")
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Threshold for {self.sensor}"
+
+    def evaluate_status(self, value):
+        """
+        Evaluates a measurement value against the threshold bands.
+        Returns: 'critical', 'warning', or 'normal'
+        """
+        if value is None or not self.is_active:
+            return "normal"
+
+        # 1. Check Critical (Outer Band) first
+        if (self.critical_min is not None and value < self.critical_min) or \
+           (self.critical_max is not None and value > self.critical_max):
+            return "critical"
+
+        # 2. Check Warning (Inner Band) second
+        if (self.warning_min is not None and value < self.warning_min) or \
+           (self.warning_max is not None and value > self.warning_max):
+            return "warning"
+
+        # 3. Inside safe zone
+        return "normal"
+
+
+class AlertStatus(models.TextChoices):
+    ACTIVE = "active", "Açık"
+    RESOLVED = "resolved", "Çözüldü"
+    ACKNOWLEDGED = "acknowledged", "Onaylandı"
+
+
+class Alert(models.Model):
+    sensor = models.ForeignKey(
+        Sensor,
+        on_delete=models.CASCADE,
+        related_name="alerts"
+    )
+    threshold = models.ForeignKey(
+        SensorThreshold,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    triggered_value = models.FloatField()
+    severity = models.CharField(
+        max_length=20,
+        choices=SeverityLevel.choices,
+        default=SeverityLevel.CRITICAL
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=AlertStatus.choices,
+        default=AlertStatus.ACTIVE
+    )
+    message = models.CharField(max_length=255, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.severity.upper()} Alert for {self.sensor} ({self.status}): {self.triggered_value}"

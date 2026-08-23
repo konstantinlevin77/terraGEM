@@ -10,12 +10,16 @@ from .views import (
     GreenhouseViewSet,
     SensorViewSet,
     SensorMeasurementViewSet,
+    SensorThresholdViewSet,
+    AlertViewSet,
 )
 
 router = DefaultRouter()
 router.register(r'greenhouses', GreenhouseViewSet, basename='greenhouse')
 router.register(r'sensors', SensorViewSet, basename='sensor')
 router.register(r'measurements', SensorMeasurementViewSet, basename='measurement')
+router.register(r'thresholds', SensorThresholdViewSet, basename='threshold')
+router.register(r'alerts', AlertViewSet, basename='alert')
 
 urlpatterns = [
     # Router endpoints (/api/greenhouses/, /api/greenhouses/<id>/)

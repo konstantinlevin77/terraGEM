@@ -241,7 +241,7 @@ class GreenhouseAPITests(TestCase):
         SensorMeasurement.objects.create(sensor=hum_sensor, value=50.0, measurement_time=now)
         SensorMeasurement.objects.create(sensor=hum_sensor, value=80.0, measurement_time=now)
 
-        today_url = reverse('greenhouse-today', kwargs={'pk': gh.pk})
+        today_url = reverse('greenhouse-today-summary', kwargs={'pk': gh.pk})
         res = self.client.get(today_url)
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -274,7 +274,8 @@ class GreenhouseAPITests(TestCase):
             password='Password123!'
         )
         other_gh = Greenhouse.objects.create(user=user2, name='Private House')
-        today_url = reverse('greenhouse-today', kwargs={'pk': other_gh.pk})
+        today_url = reverse('greenhouse-today-summary', kwargs={'pk': other_gh.pk})
+
 
         # User1 cannot access user2's greenhouse -> 404
         res = self.client.get(today_url)
@@ -429,4 +430,159 @@ class CORSTests(TestCase):
             HTTP_ORIGIN='http://unauthorized-origin.com'
         )
         self.assertIsNone(response.headers.get('Access-Control-Allow-Origin'))
+
+
+class ThresholdAndAlertAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user1 = User.objects.create_user(
+            username='grower_alert_1',
+            email='grower_alert_1@example.com',
+            password='StrongPassword123!'
+        )
+        self.user2 = User.objects.create_user(
+            username='grower_alert_2',
+            email='grower_alert_2@example.com',
+            password='StrongPassword123!'
+        )
+
+        from .models import (
+            Greenhouse,
+            Sensor,
+            SensorTypeChoices,
+            SensorBrandChoices,
+            UnitChoices,
+        )
+
+        self.gh1 = Greenhouse.objects.create(user=self.user1, name='North Tunnel')
+        self.gh2 = Greenhouse.objects.create(user=self.user2, name='South Tunnel')
+
+        self.sensor1 = Sensor.objects.create(
+            greenhouse=self.gh1,
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            sensor_brand=SensorBrandChoices.DS18B20,
+            unit=UnitChoices.CELSIUS,
+            description='Ridge probe, middle aisle',
+            is_active=True
+        )
+        self.sensor2 = Sensor.objects.create(
+            greenhouse=self.gh2,
+            sensor_type=SensorTypeChoices.AIR_HUM,
+            unit=UnitChoices.PERCENT,
+            description='Canopy sensor',
+            is_active=True
+        )
+
+        self.thresholds_url = reverse('threshold-list')
+        self.alerts_url = reverse('alert-list')
+        self.active_alerts_url = reverse('alert-active')
+
+    def test_threshold_crud_and_validation(self):
+        self.client.force_authenticate(user=self.user1)
+
+        # 1. Create valid threshold for sensor1
+        res = self.client.post(self.thresholds_url, {
+            'sensor': self.sensor1.id,
+            'warning_min': 18.0,
+            'warning_max': 30.0,
+            'critical_min': 10.0,
+            'critical_max': 38.0,
+            'is_active': True,
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['warning_min'], 18.0)
+        self.assertEqual(res.data['critical_max'], 38.0)
+        threshold_id = res.data['id']
+
+        # 2. Cannot create threshold for user2's sensor
+        bad_res = self.client.post(self.thresholds_url, {
+            'sensor': self.sensor2.id,
+            'warning_min': 20.0,
+            'warning_max': 80.0,
+        }, format='json')
+        self.assertEqual(bad_res.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 3. Invalid threshold bounds (warning_min > warning_max) -> 400
+        invalid_res = self.client.post(self.thresholds_url, {
+            'sensor': self.sensor1.id,
+            'warning_min': 40.0,
+            'warning_max': 20.0,
+        }, format='json')
+        self.assertEqual(invalid_res.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 4. List thresholds -> only sees user1's threshold
+        list_res = self.client.get(self.thresholds_url)
+        self.assertEqual(list_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(list_res.data), 1)
+
+    def test_active_alerts_endpoint_and_isolation(self):
+        from .models import Alert, AlertStatus, SeverityLevel
+
+        # Create active alert for user1's sensor
+        alert1 = Alert.objects.create(
+            sensor=self.sensor1,
+            triggered_value=57.2,
+            severity=SeverityLevel.CRITICAL,
+            status=AlertStatus.ACTIVE,
+            message='Temperature critical'
+        )
+
+        # Create resolved alert for user1 (should NOT appear in /active/)
+        Alert.objects.create(
+            sensor=self.sensor1,
+            triggered_value=24.0,
+            severity=SeverityLevel.WARNING,
+            status=AlertStatus.RESOLVED,
+            message='Old resolved alert'
+        )
+
+        # User1 requests /api/alerts/active/
+        self.client.force_authenticate(user=self.user1)
+        res = self.client.get(self.active_alerts_url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['total_active'], 1)
+        alert_data = res.data['alerts'][0]
+        self.assertEqual(alert_data['sensor_description'], 'Ridge probe, middle aisle')
+        self.assertEqual(alert_data['greenhouse_name'], 'North Tunnel')
+        self.assertEqual(alert_data['triggered_value'], 57.2)
+        self.assertEqual(alert_data['unit'], 'celsius')
+        self.assertEqual(alert_data['severity'], 'critical')
+        self.assertEqual(alert_data['severity_display'], 'Kritik')
+        self.assertEqual(alert_data['status'], AlertStatus.ACTIVE)
+
+        # User2 requests /api/alerts/active/ -> gets 0 active alerts
+        self.client.force_authenticate(user=self.user2)
+        u2_res = self.client.get(self.active_alerts_url)
+        self.assertEqual(u2_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(u2_res.data['total_active'], 0)
+
+    def test_alert_acknowledge_endpoint(self):
+        from .models import Alert, AlertStatus, SeverityLevel
+
+        alert = Alert.objects.create(
+            sensor=self.sensor1,
+            triggered_value=57.2,
+            severity=SeverityLevel.CRITICAL,
+            status=AlertStatus.ACTIVE
+        )
+
+        ack_url = reverse('alert-acknowledge', kwargs={'pk': alert.pk})
+
+        # User2 cannot acknowledge User1's alert -> 404
+        self.client.force_authenticate(user=self.user2)
+        bad_ack = self.client.post(ack_url)
+        self.assertEqual(bad_ack.status_code, status.HTTP_404_NOT_FOUND)
+
+        # User1 acknowledges -> 200 OK and status becomes ACKNOWLEDGED
+        self.client.force_authenticate(user=self.user1)
+        ack_res = self.client.post(ack_url)
+        self.assertEqual(ack_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(ack_res.data['status'], AlertStatus.ACKNOWLEDGED)
+
+        # Acknowledged alert still included in /active/ (unresolved)
+        u1_active = self.client.get(self.active_alerts_url)
+        self.assertEqual(u1_active.data['total_active'], 1)
+        self.assertEqual(u1_active.data['alerts'][0]['status'], AlertStatus.ACKNOWLEDGED)
+
+
 
