@@ -187,6 +187,105 @@ class GreenhouseAPITests(TestCase):
         unauth_res = self.client.get(latest_url)
         self.assertEqual(unauth_res.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_greenhouse_today_endpoint_success(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import (
+            Greenhouse,
+            Sensor,
+            SensorMeasurement,
+            SensorTypeChoices,
+            SensorBrandChoices,
+            UnitChoices,
+        )
+
+        gh = Greenhouse.objects.create(user=self.user, name='Orchid House')
+        # Two air_temperature sensors in different zones
+        temp_sensor1 = Sensor.objects.create(
+            greenhouse=gh,
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=UnitChoices.CELSIUS,
+            is_active=True
+        )
+        temp_sensor2 = Sensor.objects.create(
+            greenhouse=gh,
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=UnitChoices.CELSIUS,
+            is_active=True
+        )
+        # One soil_humidity sensor
+        hum_sensor = Sensor.objects.create(
+            greenhouse=gh,
+            sensor_type=SensorTypeChoices.SOIL_HUM,
+            unit=UnitChoices.PERCENT,
+            is_active=True
+        )
+
+        now = timezone.now()
+        yesterday = now - timedelta(days=1)
+
+        # Yesterday's reading (must be excluded from today's aggregations)
+        SensorMeasurement.objects.create(
+            sensor=temp_sensor1,
+            value=10.0,
+            measurement_time=yesterday
+        )
+
+        # Today's readings for air_temperature (combined across sensor1 and sensor2)
+        SensorMeasurement.objects.create(sensor=temp_sensor1, value=20.0, measurement_time=now)
+        SensorMeasurement.objects.create(sensor=temp_sensor1, value=28.0, measurement_time=now)
+        SensorMeasurement.objects.create(sensor=temp_sensor2, value=22.0, measurement_time=now)
+        SensorMeasurement.objects.create(sensor=temp_sensor2, value=30.0, measurement_time=now)
+
+        # Today's readings for soil_humidity
+        SensorMeasurement.objects.create(sensor=hum_sensor, value=50.0, measurement_time=now)
+        SensorMeasurement.objects.create(sensor=hum_sensor, value=80.0, measurement_time=now)
+
+        today_url = reverse('greenhouse-today', kwargs={'pk': gh.pk})
+        res = self.client.get(today_url)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['greenhouse_id'], gh.id)
+        self.assertEqual(str(res.data['date']), str(now.date()))
+        self.assertEqual(len(res.data['metrics']), 2)
+
+        # Verify grouped air_temperature stats across both sensors
+        temp_metric = next(m for m in res.data['metrics'] if m['sensor_type'] == SensorTypeChoices.AIR_TEMP)
+        self.assertEqual(temp_metric['unit'], UnitChoices.CELSIUS)
+        self.assertEqual(temp_metric['min_value'], 20.0)
+        self.assertEqual(temp_metric['max_value'], 30.0)
+        self.assertEqual(temp_metric['avg_value'], 25.0)
+        self.assertEqual(temp_metric['reading_count'], 4)
+
+        # Verify grouped soil_humidity stats
+        hum_metric = next(m for m in res.data['metrics'] if m['sensor_type'] == SensorTypeChoices.SOIL_HUM)
+        self.assertEqual(hum_metric['unit'], UnitChoices.PERCENT)
+        self.assertEqual(hum_metric['min_value'], 50.0)
+        self.assertEqual(hum_metric['max_value'], 80.0)
+        self.assertEqual(hum_metric['avg_value'], 65.0)
+        self.assertEqual(hum_metric['reading_count'], 2)
+
+    def test_greenhouse_today_endpoint_isolation_and_auth(self):
+        from .models import Greenhouse
+
+        user2 = User.objects.create_user(
+            username='grower_two',
+            email='two@example.com',
+            password='Password123!'
+        )
+        other_gh = Greenhouse.objects.create(user=user2, name='Private House')
+        today_url = reverse('greenhouse-today', kwargs={'pk': other_gh.pk})
+
+        # User1 cannot access user2's greenhouse -> 404
+        res = self.client.get(today_url)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Unauthenticated user -> 401
+        self.client.logout()
+        unauth_res = self.client.get(today_url)
+        self.assertEqual(unauth_res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
 
 
 class SensorAndMeasurementAPITests(TestCase):

@@ -11,10 +11,12 @@ from .serializers import (
 )
 from rest_framework.decorators import action
 from rest_framework.response import Response
-
+from django.utils import timezone
+from django.db.models import Min,Max,Avg,Count,F
 
 from rest_framework import viewsets
 from .models import Greenhouse, Sensor, SensorMeasurement
+from datetime import datetime, time
 
 User = get_user_model()
 
@@ -66,6 +68,27 @@ class GreenhouseViewSet(viewsets.ModelViewSet):
         gh = self.get_object()
         serializer = GreenhouseLatestSerializer(gh)
         return Response(serializer.data)
+
+    @action(detail=True,methods=['get'])
+    def today(self,request,pk=None):
+        gh = self.get_object()
+        date = timezone.now().date()
+        start_of_today = timezone.now().replace(hour=0,minute=0,second=0,microsecond=0)
+        metrics = SensorMeasurement.objects.filter(
+            sensor__greenhouse=gh,
+            measurement_time__gte=start_of_today
+        ).values(sensor_type = F('sensor__sensor_type'), unit = F('sensor__unit') ).annotate(
+            min_value = Min('value'),
+            max_value = Max('value'),
+            avg_value = Avg('value'),
+            reading_count = Count('id')
+        )
+        return Response({
+                "greenhouse_id":gh.id,
+                "date":date,
+                "metrics": metrics
+        })
+
 
 
 class SensorViewSet(viewsets.ModelViewSet):

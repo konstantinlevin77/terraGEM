@@ -85,6 +85,12 @@ class SensorMeasurementSerializer(serializers.ModelSerializer):
 
 
 
+#######################################################
+# SERIALIZERS FOR /api/greenhouses/<id>/latest
+#######################################################
+
+
+
 class LatestMeasurementSerializer(serializers.ModelSerializer):
     """
     This serializer is for a custom /greenhouses/<id>/latest endpoint
@@ -118,4 +124,4 @@ class GreenhouseLatestSerializer(serializers.ModelSerializer):
     class Meta:
         model = Greenhouse
         fields = ('id','name','description','sensors','longitude','latitude')
-    
+
