@@ -197,3 +197,24 @@ class SensorAndMeasurementAPITests(TestCase):
         admin_res = self.client.get(self.measurements_url)
         self.assertEqual(admin_res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(admin_res.data), 1)
+
+
+class CORSTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('token_obtain_pair')
+
+    def test_cors_allowed_origin(self):
+        response = self.client.post(
+            self.url,
+            HTTP_ORIGIN='http://localhost:3000'
+        )
+        self.assertEqual(response.headers.get('Access-Control-Allow-Origin'), 'http://localhost:3000')
+
+    def test_cors_disallowed_origin(self):
+        response = self.client.post(
+            self.url,
+            HTTP_ORIGIN='http://unauthorized-origin.com'
+        )
+        self.assertIsNone(response.headers.get('Access-Control-Allow-Origin'))
+
