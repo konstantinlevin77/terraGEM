@@ -8,6 +8,7 @@ from .views import (
     RegisterView,
     UserProfileView,
     GreenhouseViewSet,
+    SensorProfileViewSet,
     SensorViewSet,
     SensorMeasurementViewSet,
     SensorThresholdViewSet,
@@ -16,6 +17,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r'greenhouses', GreenhouseViewSet, basename='greenhouse')
+router.register(r'sensor-profiles', SensorProfileViewSet, basename='sensor-profile')
 router.register(r'sensors', SensorViewSet, basename='sensor')
 router.register(r'measurements', SensorMeasurementViewSet, basename='measurement')
 router.register(r'thresholds', SensorThresholdViewSet, basename='threshold')

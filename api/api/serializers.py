@@ -5,6 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 
 from .models import (
     Greenhouse,
+    SensorProfile,
     Sensor,
     SensorMeasurement,
     SensorThreshold,
@@ -62,11 +63,47 @@ class GreenhouseSerializer(serializers.ModelSerializer):
         read_only_fields = ('id','user','created_at','updated_at')
 
 
+class SensorProfileSerializer(serializers.ModelSerializer):
+    sensor_type_display = serializers.CharField(source='get_sensor_type_display', read_only=True)
+    unit_display = serializers.CharField(source='get_unit_display', read_only=True)
+
+    class Meta:
+        model = SensorProfile
+        fields = (
+            'id',
+            'name',
+            'sensor_type',
+            'sensor_type_display',
+            'unit',
+            'unit_display',
+            'period',
+            'description',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
+
 class SensorSerializer(serializers.ModelSerializer):
+    profile_name = serializers.CharField(source='profile.name', read_only=True)
+    sensor_type = serializers.CharField(source='profile.sensor_type', read_only=True)
+    unit = serializers.CharField(source='profile.unit', read_only=True)
+
     class Meta:
         model = Sensor 
-        fields = ('id','greenhouse','sensor_type','sensor_brand','unit','is_active','description','created_at','updated_at')
-        read_only_fields = ('id','created_at','updated_at')
+        fields = (
+            'id',
+            'greenhouse',
+            'profile',
+            'profile_name',
+            'sensor_type',
+            'unit',
+            'is_active',
+            'description',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = ('id', 'created_at', 'updated_at')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -110,14 +147,25 @@ class SensorWithLatestMeasurementSerializer(serializers.ModelSerializer):
     """
     This serializer is for one sensor and its latest measurement combined.
     """
-    # DRF automatically looks for get_latest_measurement() function 
+    profile_name = serializers.CharField(source='profile.name', read_only=True)
+    sensor_type = serializers.CharField(source='profile.sensor_type', read_only=True)
+    unit = serializers.CharField(source='profile.unit', read_only=True)
     latest_measurement = serializers.SerializerMethodField()
 
     class Meta:
         model = Sensor
-        fields = ('id','sensor_type','sensor_brand','unit','is_active','description','latest_measurement')
+        fields = (
+            'id',
+            'profile',
+            'profile_name',
+            'sensor_type',
+            'unit',
+            'is_active',
+            'description',
+            'latest_measurement',
+        )
 
-    def get_latest_measurement(self,obj):
+    def get_latest_measurement(self, obj):
         latest = obj.measurements.first()
         if latest is not None:
             return LatestMeasurementSerializer(latest).data
@@ -177,12 +225,12 @@ class SensorThresholdSerializer(serializers.ModelSerializer):
 
 
 class AlertSerializer(serializers.ModelSerializer):
-    sensor_type = serializers.CharField(source='sensor.sensor_type', read_only=True)
-    sensor_type_display = serializers.CharField(source='sensor.get_sensor_type_display', read_only=True)
+    sensor_type = serializers.CharField(source='sensor.profile.sensor_type', read_only=True)
+    sensor_type_display = serializers.CharField(source='sensor.profile.get_sensor_type_display', read_only=True)
     sensor_description = serializers.CharField(source='sensor.description', read_only=True)
     greenhouse_id = serializers.IntegerField(source='sensor.greenhouse.id', read_only=True)
     greenhouse_name = serializers.CharField(source='sensor.greenhouse.name', read_only=True)
-    unit = serializers.CharField(source='sensor.unit', read_only=True)
+    unit = serializers.CharField(source='sensor.profile.unit', read_only=True)
     severity_display = serializers.CharField(source='get_severity_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
 
@@ -208,5 +256,6 @@ class AlertSerializer(serializers.ModelSerializer):
             'resolved_at',
         )
         read_only_fields = fields
+
 
 

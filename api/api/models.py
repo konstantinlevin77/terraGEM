@@ -48,17 +48,28 @@ class SensorTypeChoices(models.TextChoices):
     NOT_SPEC = "not_specified"
 
 
-class SensorBrandChoices(models.TextChoices):
-    DS18B20 = "DS18B20"
-    RESISTIVE_SOIL_HUM = "resistive_soil_hum"
-    NOT_SPEC = "not_specified"
-
-class UnitChoices(models.TextChoices):
+class SensorUnitChoices(models.TextChoices):
     CELSIUS = "celsius"
     PERCENT = "percent"
     PPM = "ppm"
     PH = "ph"
     NOT_SPEC = "not_specified"
+
+
+class SensorProfile(models.Model):
+    name = models.CharField(max_length=100)
+    sensor_type = models.CharField(max_length=100,choices=SensorTypeChoices,default=SensorTypeChoices.NOT_SPEC)
+    unit = models.CharField(max_length=100,choices=SensorUnitChoices,default=SensorUnitChoices.NOT_SPEC)
+    period = models.FloatField(null=True,blank=True,default=5.0)
+    description = models.CharField(max_length=200,null=True,blank=True)
+
+
+    created_at = models.DateTimeField(auto_now_add=True)  # Set once when created
+    updated_at = models.DateTimeField(auto_now=True)      # Updated on every .save()
+
+    def __str__(self):
+        return f"{self.name} ({self.get_sensor_type_display() if hasattr(self, 'get_sensor_type_display') else self.sensor_type})"
+
 
 
 class Sensor(models.Model):
@@ -67,17 +78,23 @@ class Sensor(models.Model):
         on_delete=models.CASCADE,
         related_name="sensors"
     )
-    sensor_type = models.CharField(max_length=50,choices=SensorTypeChoices, default=SensorTypeChoices.NOT_SPEC)
-    sensor_brand = models.CharField(max_length=50,choices=SensorBrandChoices,default=SensorBrandChoices.NOT_SPEC)
-    unit = models.CharField(max_length=20,choices=UnitChoices,default=UnitChoices.NOT_SPEC)
-
+    profile = models.ForeignKey(
+        SensorProfile,
+        on_delete=models.PROTECT,
+        related_name="sensors",
+        null=True,
+        blank=True
+    )
     is_active = models.BooleanField(default=False)
     description = models.CharField(max_length=200, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)  # Set once when created
     updated_at = models.DateTimeField(auto_now=True)      # Updated on every .save()
 
     def __str__(self):
-        return f"{self.sensor_type or 'Sensor'} ({self.greenhouse.name or self.greenhouse.pk})"
+        profile_name = self.profile.name if self.profile else 'Sensor'
+        return f"{profile_name} ({self.greenhouse.name or self.greenhouse.pk})"
+
+
 
 
 class SensorMeasurement(models.Model):
@@ -95,12 +112,14 @@ class SensorMeasurement(models.Model):
         ordering = ['-measurement_time']
 
     def __str__(self):
-        return f"{self.sensor.sensor_type}: {self.value} @ {self.measurement_time}"
+        profile_name = self.sensor.profile.name if (self.sensor and self.sensor.profile) else 'Sensor'
+        return f"{profile_name}: {self.value} @ {self.measurement_time}"
 
 
 class SeverityLevel(models.TextChoices):
-    WARNING = 'warning', 
-    CRITICAL = 'critical'
+    WARNING = 'warning', 'Uyarı'
+    CRITICAL = 'critical', 'Kritik'
+
 
 
 

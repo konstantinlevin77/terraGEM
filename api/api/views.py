@@ -3,6 +3,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
 from .serializers import (
     SensorSerializer,
+    SensorProfileSerializer,
     UserRegistrationSerializer,
     UserProfileSerializer,
     GreenhouseSerializer,
@@ -19,6 +20,7 @@ from django.db.models import Min, Max, Avg, Count, F
 from rest_framework import viewsets
 from .models import (
     Greenhouse,
+    SensorProfile,
     Sensor,
     SensorMeasurement,
     SensorThreshold,
@@ -85,18 +87,26 @@ class GreenhouseViewSet(viewsets.ModelViewSet):
         metrics = SensorMeasurement.objects.filter(
             sensor__greenhouse=gh,
             measurement_time__gte=start_of_today
-        ).values(sensor_type = F('sensor__sensor_type'), unit = F('sensor__unit') ).annotate(
-            min_value = Min('value'),
-            max_value = Max('value'),
-            avg_value = Avg('value'),
-            reading_count = Count('id')
+        ).values(
+            sensor_type=F('sensor__profile__sensor_type'),
+            unit=F('sensor__profile__unit')
+        ).annotate(
+            min_value=Min('value'),
+            max_value=Max('value'),
+            avg_value=Avg('value'),
+            reading_count=Count('id')
         )
         return Response({
-                "greenhouse_id":gh.id,
-                "date":date,
-                "metrics": metrics
+            "greenhouse_id": gh.id,
+            "date": date,
+            "metrics": metrics
         })
 
+
+class SensorProfileViewSet(viewsets.ModelViewSet):
+    queryset = SensorProfile.objects.all()
+    serializer_class = SensorProfileSerializer
+    permission_classes = [IsAuthenticated]
 
 
 class SensorViewSet(viewsets.ModelViewSet):

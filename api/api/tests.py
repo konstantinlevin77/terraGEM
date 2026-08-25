@@ -113,25 +113,33 @@ class GreenhouseAPITests(TestCase):
         from django.utils import timezone
         from .models import (
             Greenhouse,
+            SensorProfile,
             Sensor,
             SensorMeasurement,
             SensorTypeChoices,
-            SensorBrandChoices,
-            UnitChoices,
+            SensorUnitChoices,
         )
 
         gh = Greenhouse.objects.create(user=self.user, name='Pepper House')
+        profile_temp = SensorProfile.objects.create(
+            name='DS18B20',
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=SensorUnitChoices.CELSIUS
+        )
+        profile_hum = SensorProfile.objects.create(
+            name='DHT22',
+            sensor_type=SensorTypeChoices.AIR_HUM,
+            unit=SensorUnitChoices.PERCENT
+        )
+
         sensor1 = Sensor.objects.create(
             greenhouse=gh,
-            sensor_type=SensorTypeChoices.AIR_TEMP,
-            sensor_brand=SensorBrandChoices.DS18B20,
-            unit=UnitChoices.CELSIUS,
+            profile=profile_temp,
             is_active=True
         )
         sensor2 = Sensor.objects.create(
             greenhouse=gh,
-            sensor_type=SensorTypeChoices.AIR_HUM,
-            unit=UnitChoices.PERCENT,
+            profile=profile_hum,
             is_active=True
         )
 
@@ -192,32 +200,40 @@ class GreenhouseAPITests(TestCase):
         from django.utils import timezone
         from .models import (
             Greenhouse,
+            SensorProfile,
             Sensor,
             SensorMeasurement,
             SensorTypeChoices,
-            SensorBrandChoices,
-            UnitChoices,
+            SensorUnitChoices,
         )
 
         gh = Greenhouse.objects.create(user=self.user, name='Orchid House')
-        # Two air_temperature sensors in different zones
+        profile_temp = SensorProfile.objects.create(
+            name='DS18B20_Today',
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=SensorUnitChoices.CELSIUS
+        )
+        profile_hum = SensorProfile.objects.create(
+            name='DHT22_Today',
+            sensor_type=SensorTypeChoices.SOIL_HUM,
+            unit=SensorUnitChoices.PERCENT
+        )
+
+        # Two air_temperature sensors in different zones sharing profile_temp
         temp_sensor1 = Sensor.objects.create(
             greenhouse=gh,
-            sensor_type=SensorTypeChoices.AIR_TEMP,
-            unit=UnitChoices.CELSIUS,
+            profile=profile_temp,
             is_active=True
         )
         temp_sensor2 = Sensor.objects.create(
             greenhouse=gh,
-            sensor_type=SensorTypeChoices.AIR_TEMP,
-            unit=UnitChoices.CELSIUS,
+            profile=profile_temp,
             is_active=True
         )
         # One soil_humidity sensor
         hum_sensor = Sensor.objects.create(
             greenhouse=gh,
-            sensor_type=SensorTypeChoices.SOIL_HUM,
-            unit=UnitChoices.PERCENT,
+            profile=profile_hum,
             is_active=True
         )
 
@@ -251,7 +267,7 @@ class GreenhouseAPITests(TestCase):
 
         # Verify grouped air_temperature stats across both sensors
         temp_metric = next(m for m in res.data['metrics'] if m['sensor_type'] == SensorTypeChoices.AIR_TEMP)
-        self.assertEqual(temp_metric['unit'], UnitChoices.CELSIUS)
+        self.assertEqual(temp_metric['unit'], SensorUnitChoices.CELSIUS)
         self.assertEqual(temp_metric['min_value'], 20.0)
         self.assertEqual(temp_metric['max_value'], 30.0)
         self.assertEqual(temp_metric['avg_value'], 25.0)
@@ -259,7 +275,7 @@ class GreenhouseAPITests(TestCase):
 
         # Verify grouped soil_humidity stats
         hum_metric = next(m for m in res.data['metrics'] if m['sensor_type'] == SensorTypeChoices.SOIL_HUM)
-        self.assertEqual(hum_metric['unit'], UnitChoices.PERCENT)
+        self.assertEqual(hum_metric['unit'], SensorUnitChoices.PERCENT)
         self.assertEqual(hum_metric['min_value'], 50.0)
         self.assertEqual(hum_metric['max_value'], 80.0)
         self.assertEqual(hum_metric['avg_value'], 65.0)
@@ -310,32 +326,42 @@ class SensorAndMeasurementAPITests(TestCase):
 
         from .models import (
             Greenhouse,
+            SensorProfile,
             Sensor,
             SensorMeasurement,
             SensorTypeChoices,
-            SensorBrandChoices,
-            UnitChoices,
+            SensorUnitChoices,
         )
         self.greenhouse1 = Greenhouse.objects.create(user=self.user1, name='GH 1')
         self.greenhouse2 = Greenhouse.objects.create(user=self.user2, name='GH 2')
 
+        self.profile1 = SensorProfile.objects.create(
+            name='DS18B20',
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=SensorUnitChoices.CELSIUS
+        )
+        self.profile2 = SensorProfile.objects.create(
+            name='DHT22',
+            sensor_type=SensorTypeChoices.AIR_HUM,
+            unit=SensorUnitChoices.PERCENT
+        )
+
         self.sensor1 = Sensor.objects.create(
             greenhouse=self.greenhouse1,
-            sensor_type=SensorTypeChoices.AIR_TEMP,
-            sensor_brand=SensorBrandChoices.DS18B20,
-            unit=UnitChoices.CELSIUS
+            profile=self.profile1,
+            is_active=True
         )
         self.sensor2 = Sensor.objects.create(
             greenhouse=self.greenhouse2,
-            sensor_type=SensorTypeChoices.AIR_HUM,
-            unit=UnitChoices.PERCENT
+            profile=self.profile2,
+            is_active=True
         )
 
         self.sensors_url = reverse('sensor-list')
         self.measurements_url = reverse('measurement-list')
 
     def test_sensor_creation_and_isolation(self):
-        from .models import SensorTypeChoices, SensorBrandChoices, UnitChoices
+        from .models import SensorTypeChoices, SensorUnitChoices
 
         self.client.force_authenticate(user=self.user1)
 
@@ -345,33 +371,24 @@ class SensorAndMeasurementAPITests(TestCase):
         self.assertEqual(len(res.data), 1)
         self.assertEqual(res.data[0]['id'], self.sensor1.id)
         self.assertEqual(res.data[0]['sensor_type'], SensorTypeChoices.AIR_TEMP)
-        self.assertEqual(res.data[0]['sensor_brand'], SensorBrandChoices.DS18B20)
-        self.assertEqual(res.data[0]['unit'], UnitChoices.CELSIUS)
+        self.assertEqual(res.data[0]['profile_name'], 'DS18B20')
+        self.assertEqual(res.data[0]['unit'], SensorUnitChoices.CELSIUS)
 
         # Create sensor attached to greenhouse1 -> Success
         post_res = self.client.post(self.sensors_url, {
             'greenhouse': self.greenhouse1.id,
-            'sensor_type': SensorTypeChoices.SOIL_HUM,
-            'sensor_brand': SensorBrandChoices.RESISTIVE_SOIL_HUM,
-            'unit': UnitChoices.PERCENT,
+            'profile': self.profile2.id,
             'is_active': True,
         }, format='json')
         self.assertEqual(post_res.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(post_res.data['sensor_type'], SensorTypeChoices.SOIL_HUM)
-        self.assertEqual(post_res.data['sensor_brand'], SensorBrandChoices.RESISTIVE_SOIL_HUM)
-        self.assertEqual(post_res.data['unit'], UnitChoices.PERCENT)
-
-        # Invalid choice validation -> 400 Bad Request
-        invalid_choice_res = self.client.post(self.sensors_url, {
-            'greenhouse': self.greenhouse1.id,
-            'sensor_type': 'invalid_unknown_type',
-        }, format='json')
-        self.assertEqual(invalid_choice_res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(post_res.data['sensor_type'], SensorTypeChoices.AIR_HUM)
+        self.assertEqual(post_res.data['profile_name'], 'DHT22')
+        self.assertEqual(post_res.data['unit'], SensorUnitChoices.PERCENT)
 
         # Cannot attach sensor to user2's greenhouse -> 400 Bad Request
         bad_post = self.client.post(self.sensors_url, {
             'greenhouse': self.greenhouse2.id,
-            'sensor_type': SensorTypeChoices.CO2,
+            'profile': self.profile1.id,
         }, format='json')
         self.assertEqual(bad_post.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -448,27 +465,35 @@ class ThresholdAndAlertAPITests(TestCase):
 
         from .models import (
             Greenhouse,
+            SensorProfile,
             Sensor,
             SensorTypeChoices,
-            SensorBrandChoices,
-            UnitChoices,
+            SensorUnitChoices,
         )
 
         self.gh1 = Greenhouse.objects.create(user=self.user1, name='North Tunnel')
         self.gh2 = Greenhouse.objects.create(user=self.user2, name='South Tunnel')
 
+        self.profile1 = SensorProfile.objects.create(
+            name='RidgeProbeDS18B20',
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=SensorUnitChoices.CELSIUS
+        )
+        self.profile2 = SensorProfile.objects.create(
+            name='CanopyDHT22',
+            sensor_type=SensorTypeChoices.AIR_HUM,
+            unit=SensorUnitChoices.PERCENT
+        )
+
         self.sensor1 = Sensor.objects.create(
             greenhouse=self.gh1,
-            sensor_type=SensorTypeChoices.AIR_TEMP,
-            sensor_brand=SensorBrandChoices.DS18B20,
-            unit=UnitChoices.CELSIUS,
+            profile=self.profile1,
             description='Ridge probe, middle aisle',
             is_active=True
         )
         self.sensor2 = Sensor.objects.create(
             greenhouse=self.gh2,
-            sensor_type=SensorTypeChoices.AIR_HUM,
-            unit=UnitChoices.PERCENT,
+            profile=self.profile2,
             description='Canopy sensor',
             is_active=True
         )
@@ -476,6 +501,7 @@ class ThresholdAndAlertAPITests(TestCase):
         self.thresholds_url = reverse('threshold-list')
         self.alerts_url = reverse('alert-list')
         self.active_alerts_url = reverse('alert-active')
+
 
     def test_threshold_crud_and_validation(self):
         self.client.force_authenticate(user=self.user1)
