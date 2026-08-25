@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Min, Max, Avg, Count, F
 
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from .models import (
     Greenhouse,
     SensorProfile,
@@ -207,7 +207,11 @@ class SensorViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class SensorMeasurementViewSet(viewsets.ModelViewSet):
+class SensorMeasurementViewSet(
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet
+):
     queryset = SensorMeasurement.objects.all()
     serializer_class = SensorMeasurementSerializer
     permission_classes = [IsAuthenticated]

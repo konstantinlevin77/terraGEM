@@ -515,7 +515,11 @@ class SensorAndMeasurementAPITests(TestCase):
     def test_measurement_crud_and_isolation(self):
         self.client.force_authenticate(user=self.user1)
 
-        # Create measurement for sensor1 -> Success
+        # 1. Listing all measurements is disabled -> 405 Method Not Allowed
+        list_res = self.client.get(self.measurements_url)
+        self.assertEqual(list_res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        # 2. Create measurement for sensor1 -> Success (201 Created)
         res = self.client.post(self.measurements_url, {
             'sensor': self.sensor1.id,
             'value': 24.5,
@@ -524,29 +528,25 @@ class SensorAndMeasurementAPITests(TestCase):
         self.assertEqual(res.data['value'], 24.5)
         measurement_id = res.data['id']
 
-        # List measurements -> user1 sees 1 measurement
-        list_res = self.client.get(self.measurements_url)
-        self.assertEqual(list_res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(list_res.data), 1)
+        detail_url = reverse('measurement-detail', kwargs={'pk': measurement_id})
 
-        # User2 logs in -> Sees 0 measurements from user1
+        # 3. User1 can retrieve their own specific measurement -> 200 OK
+        detail_res = self.client.get(detail_url)
+        self.assertEqual(detail_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail_res.data['value'], 24.5)
+
+        # 4. User2 cannot retrieve User1's measurement -> 404 Not Found
         self.client.force_authenticate(user=self.user2)
-        user2_res = self.client.get(self.measurements_url)
-        self.assertEqual(user2_res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(user2_res.data), 0)
+        user2_detail = self.client.get(detail_url)
+        self.assertEqual(user2_detail.status_code, status.HTTP_404_NOT_FOUND)
 
-        # User2 cannot post measurement to user1's sensor
+        # 5. User2 cannot post measurement to user1's sensor -> 400 Bad Request
         bad_res = self.client.post(self.measurements_url, {
             'sensor': self.sensor1.id,
             'value': 99.9,
         }, format='json')
         self.assertEqual(bad_res.status_code, status.HTTP_400_BAD_REQUEST)
 
-        # Admin logs in -> Sees all measurements
-        self.client.force_authenticate(user=self.admin_user)
-        admin_res = self.client.get(self.measurements_url)
-        self.assertEqual(admin_res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(admin_res.data), 1)
 
 
 class CORSTests(TestCase):
