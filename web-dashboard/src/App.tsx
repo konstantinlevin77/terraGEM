@@ -1,10 +1,17 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { AuthProvider } from '@/hooks/useAuth';
+import { ScopeProvider } from '@/hooks/useScope';
 import { I18nProvider } from '@/i18n';
+import { ToastProvider } from '@/components/toast';
 import { RedirectIfAuthed, RequireAuth } from '@/components/layout/guards';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { LoginPage } from '@/pages/LoginPage';
-import { DashboardPlaceholder } from '@/pages/DashboardPlaceholder';
+import { OverviewPage } from '@/pages/OverviewPage';
+import { GreenhousesPage } from '@/pages/GreenhousesPage';
+import { SensorsPage } from '@/pages/SensorsPage';
+import { HistoryPage } from '@/pages/HistoryPage';
+import { SettingsPage } from '@/pages/SettingsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,27 +31,37 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route
-                path="/login"
-                element={
-                  <RedirectIfAuthed>
-                    <LoginPage />
-                  </RedirectIfAuthed>
-                }
-              />
-              <Route
-                path="/"
-                element={
-                  <RequireAuth>
-                    <DashboardPlaceholder />
-                  </RequireAuth>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
+          <ScopeProvider>
+            <ToastProvider>
+              <BrowserRouter>
+                <Routes>
+                  <Route
+                    path="/login"
+                    element={
+                      <RedirectIfAuthed>
+                        <LoginPage />
+                      </RedirectIfAuthed>
+                    }
+                  />
+                  <Route
+                    element={
+                      <RequireAuth>
+                        <AppLayout />
+                      </RequireAuth>
+                    }
+                  >
+                    <Route path="/" element={<Navigate to="/overview" replace />} />
+                    <Route path="/overview" element={<OverviewPage />} />
+                    <Route path="/greenhouses" element={<GreenhousesPage />} />
+                    <Route path="/sensors" element={<SensorsPage />} />
+                    <Route path="/history" element={<HistoryPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                  </Route>
+                  <Route path="*" element={<Navigate to="/overview" replace />} />
+                </Routes>
+              </BrowserRouter>
+            </ToastProvider>
+          </ScopeProvider>
         </AuthProvider>
       </I18nProvider>
     </QueryClientProvider>

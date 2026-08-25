@@ -1,6 +1,17 @@
 export const en = {
   'terraGEM — Greenhouse Environment Management': 'terraGEM — Greenhouse Environment Management',
   'Greenhouse Environment Management': 'Greenhouse Environment Management',
+  Primary: 'Primary',
+  Overview: 'Overview',
+  Greenhouses: 'Greenhouses',
+  Sensors: 'Sensors',
+  History: 'History',
+  Settings: 'Settings',
+  'All greenhouses': 'All greenhouses',
+  'All greenhouses · portfolio average': 'All greenhouses · portfolio average',
+  'Choose greenhouse': 'Choose greenhouse',
+  'Live feed': 'Live feed',
+  Paused: 'Paused',
   'Sign in': 'Sign in',
   'Sign out': 'Sign out',
   'Sign in to your greenhouse dashboard': 'Sign in to your greenhouse dashboard',
@@ -10,6 +21,8 @@ export const en = {
   'Invalid username or password.': 'Invalid username or password.',
   'Connection error. Is the API running?': 'Connection error. Is the API running?',
   Welcome: 'Welcome',
+  'Add greenhouse': 'Add greenhouse',
+  'Add sensor': 'Add sensor',
 } as const;
 
 export type Dict = Record<keyof typeof en, string>;
