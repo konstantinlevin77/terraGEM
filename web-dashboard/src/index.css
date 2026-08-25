@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --bg: oklch(99% 0.002 240);
+  --surface: oklch(100% 0 0);
+  --surface-alt: oklch(97.3% 0.003 240);
+  --fg: oklch(18% 0.012 250);
+  --fg-subtle: oklch(38% 0.012 250);
+  --muted: oklch(54% 0.012 250);
+  --border: oklch(92% 0.005 250);
+  --border-strong: oklch(86% 0.007 250);
+  --accent: oklch(48% 0.11 152);
+  --accent-hover: oklch(54% 0.11 152);
+  --accent-down: oklch(42% 0.11 152);
+  --accent-soft: oklch(96% 0.02 152);
+  --accent-ring: oklch(60% 0.11 152);
+  --danger: oklch(50% 0.19 27);
+  --danger-soft: oklch(96% 0.025 25);
+  --warn: oklch(45% 0.115 70);
+  --warn-soft: oklch(96.5% 0.04 85);
+  --ok: oklch(46% 0.13 150);
+  --ok-soft: oklch(95.5% 0.03 150);
+  --c-air-temp: oklch(60% 0.17 45);
+  --c-air-hum: oklch(56% 0.10 235);
+  --c-soil-hum: oklch(52% 0.13 150);
+  --c-soil-temp: oklch(50% 0.14 310);
+  --shadow-pop: 0 10px 34px -8px oklch(20% 0.02 255 / 0.18), 0 2px 8px -2px oklch(20% 0.02 255 / 0.10);
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-fg: var(--fg);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ring: var(--accent-ring);
+
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+
+  --color-series-air-temp: var(--c-air-temp);
+  --color-series-air-hum: var(--c-air-hum);
+  --color-series-soil-hum: var(--c-soil-hum);
+  --color-series-soil-temp: var(--c-soil-temp);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
