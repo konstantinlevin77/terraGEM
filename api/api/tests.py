@@ -292,7 +292,6 @@ class GreenhouseAPITests(TestCase):
         other_gh = Greenhouse.objects.create(user=user2, name='Private House')
         today_url = reverse('greenhouse-today-summary', kwargs={'pk': other_gh.pk})
 
-
         # User1 cannot access user2's greenhouse -> 404
         res = self.client.get(today_url)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
@@ -301,6 +300,127 @@ class GreenhouseAPITests(TestCase):
         self.client.logout()
         unauth_res = self.client.get(today_url)
         self.assertEqual(unauth_res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_greenhouse_day_overview_success(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import (
+            Greenhouse,
+            SensorProfile,
+            Sensor,
+            SensorMeasurement,
+            SensorTypeChoices,
+            SensorUnitChoices,
+        )
+
+        gh = Greenhouse.objects.create(user=self.user, name='Tomato Bay')
+        profile_temp = SensorProfile.objects.create(
+            name='DS18B20_24h',
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=SensorUnitChoices.CELSIUS
+        )
+        profile_hum = SensorProfile.objects.create(
+            name='DHT22_24h',
+            sensor_type=SensorTypeChoices.SOIL_HUM,
+            unit=SensorUnitChoices.PERCENT
+        )
+
+        temp_sensor1 = Sensor.objects.create(greenhouse=gh, profile=profile_temp, is_active=True)
+        temp_sensor2 = Sensor.objects.create(greenhouse=gh, profile=profile_temp, is_active=True)
+        hum_sensor = Sensor.objects.create(greenhouse=gh, profile=profile_hum, is_active=True)
+
+        now = timezone.now()
+
+        # 1. Measurement older than 24 hours -> MUST be excluded
+        SensorMeasurement.objects.create(
+            sensor=temp_sensor1,
+            value=99.0,
+            measurement_time=now - timedelta(hours=25)
+        )
+
+        # 2. Bucket ~30 mins ago: 2 temperature readings (20.0 and 24.0)
+        time_30m_ago = now - timedelta(minutes=30)
+        SensorMeasurement.objects.create(sensor=temp_sensor1, value=20.0, measurement_time=time_30m_ago)
+        SensorMeasurement.objects.create(sensor=temp_sensor2, value=24.0, measurement_time=time_30m_ago)
+
+        # 3. Bucket ~10 mins ago: 1 temperature reading (26.0) and 1 humidity reading (60.0)
+        time_10m_ago = now - timedelta(minutes=10)
+        SensorMeasurement.objects.create(sensor=temp_sensor1, value=26.0, measurement_time=time_10m_ago)
+        SensorMeasurement.objects.create(sensor=hum_sensor, value=60.0, measurement_time=time_10m_ago)
+
+        overview_url = reverse('greenhouse-day-overview', kwargs={'pk': gh.pk})
+        res = self.client.get(overview_url)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['greenhouse_id'], gh.id)
+        self.assertEqual(res.data['greenhouse_name'], 'Tomato Bay')
+        self.assertEqual(len(res.data['series']), 2)
+
+        # Check air_temperature series
+        temp_series = next(s for s in res.data['series'] if s['sensor_type'] == SensorTypeChoices.AIR_TEMP)
+        self.assertEqual(len(temp_series['timeline']), 2)
+
+        # First bucket (30 min ago)
+        b1 = temp_series['timeline'][0]
+        self.assertEqual(b1['avg_value'], 22.0)
+        self.assertEqual(b1['min_value'], 20.0)
+        self.assertEqual(b1['max_value'], 24.0)
+        self.assertEqual(b1['reading_count'], 2)
+
+        # Second bucket (10 min ago)
+        b2 = temp_series['timeline'][1]
+        self.assertEqual(b2['avg_value'], 26.0)
+        self.assertEqual(b2['min_value'], 26.0)
+        self.assertEqual(b2['max_value'], 26.0)
+        self.assertEqual(b2['reading_count'], 1)
+
+        # Check soil_humidity series
+        hum_series = next(s for s in res.data['series'] if s['sensor_type'] == SensorTypeChoices.SOIL_HUM)
+        self.assertEqual(len(hum_series['timeline']), 1)
+        self.assertEqual(hum_series['timeline'][0]['avg_value'], 60.0)
+        self.assertEqual(hum_series['timeline'][0]['reading_count'], 1)
+
+    def test_greenhouse_day_overview_empty_when_no_measurements(self):
+        from .models import Greenhouse, SensorProfile, Sensor, SensorTypeChoices, SensorUnitChoices
+
+        gh = Greenhouse.objects.create(user=self.user, name='Brand New Empty House')
+        profile = SensorProfile.objects.create(
+            name='DHT22_EmptyTest',
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=SensorUnitChoices.CELSIUS
+        )
+        Sensor.objects.create(greenhouse=gh, profile=profile, is_active=True)
+
+        overview_url = reverse('greenhouse-day-overview', kwargs={'pk': gh.pk})
+        res = self.client.get(overview_url)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['greenhouse_id'], gh.id)
+        self.assertEqual(res.data['greenhouse_name'], 'Brand New Empty House')
+        self.assertEqual(res.data['series'], [])
+
+    def test_greenhouse_day_overview_isolation_and_auth(self):
+        from .models import Greenhouse
+
+        user2 = User.objects.create_user(
+            username='grower_day_two',
+            email='daytwo@example.com',
+            password='Password123!'
+        )
+        other_gh = Greenhouse.objects.create(user=user2, name='Private Overview House')
+        overview_url = reverse('greenhouse-day-overview', kwargs={'pk': other_gh.pk})
+
+        # User1 cannot access user2's greenhouse -> 404
+        res = self.client.get(overview_url)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Unauthenticated user -> 401
+        self.client.logout()
+        unauth_res = self.client.get(overview_url)
+        self.assertEqual(unauth_res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+
 
 
 

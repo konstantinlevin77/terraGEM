@@ -102,6 +102,85 @@ class GreenhouseViewSet(viewsets.ModelViewSet):
             "metrics": metrics
         })
 
+    @action(detail=True,methods=['get'])
+    def day_overview(self,request,pk=None):
+
+        gh = self.get_object()
+        now = timezone.now()
+        twenty_four_hours_earlier = now - timezone.timedelta(hours=24)
+
+        # 1. Fetch the latest 24 hours 
+        measurements = SensorMeasurement.objects.filter(
+            sensor__greenhouse=gh,
+            measurement_time__gte=twenty_four_hours_earlier,
+            measurement_time__lt=now
+        ).select_related('sensor__profile')
+
+        # I'm hardcoding this for now, but I'll fix it soon
+        # For now, all sensors are bucketed into 10 minute intervals
+        # In the future, sensor period will determien the bucket width.
+        num_buckets = int(24 * 60 / 10)
+        buckets = [[] for i in range(num_buckets)]
+
+        # 2. Bucket into 10 minute intervals
+        for m in measurements:
+            time_diff = int((m.measurement_time - twenty_four_hours_earlier).total_seconds() // 60)
+            bucket_index = time_diff // 10
+
+            # Boundary safeguard (ensure index stays between 0 and num_buckets - 1):
+            bucket_index = min(max(bucket_index, 0), num_buckets - 1)
+
+            buckets[bucket_index].append(m)
+
+        # 3. Group measurements and format timeline points per sensor type
+        series_by_type = {}
+
+        for bucket_idx, b in enumerate(buckets):
+            if not b:
+                continue
+
+            bucket_time = twenty_four_hours_earlier + timezone.timedelta(minutes=bucket_idx * 10)
+
+            group_by_sensor_type = {}
+            for m in b:
+                s_type = m.sensor.profile.sensor_type
+                if s_type not in group_by_sensor_type:
+                    group_by_sensor_type[s_type] = []
+                group_by_sensor_type[s_type].append(m)
+
+            for sensor_type, ms in group_by_sensor_type.items():
+                values = [m.value for m in ms]
+                min_m = min(values)
+                max_m = max(values)
+                avg_m = sum(values) / len(values)
+
+                point = {
+                    "timestamp": bucket_time.isoformat(),
+                    "avg_value": round(avg_m, 2),
+                    "min_value": round(min_m, 2),
+                    "max_value": round(max_m, 2),
+                    "reading_count": len(values)
+                }
+
+                if sensor_type not in series_by_type:
+                    series_by_type[sensor_type] = []
+                series_by_type[sensor_type].append(point)
+
+        # 4. Assemble final series list
+        series_output = [
+            {
+                "sensor_type": sensor_type,
+                "timeline": timeline
+            }
+            for sensor_type, timeline in series_by_type.items()
+        ]
+
+        return Response({
+            "greenhouse_id": gh.id,
+            "greenhouse_name": gh.name,
+            "series": series_output
+        })
+
 
 class SensorProfileViewSet(viewsets.ModelViewSet):
     queryset = SensorProfile.objects.all()
