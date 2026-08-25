@@ -158,3 +158,10 @@ export interface ActiveAlertsResponse {
   total_active: number;
   alerts: ActiveAlert[];
 }
+
+export interface GreenhousePayload {
+  name: string;
+  description: string;
+  latitude: number | null;
+  longitude: number | null;
+}
