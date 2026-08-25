@@ -13,7 +13,13 @@ export default defineConfig([
       js.configs.recommended,
       tseslint.configs.recommended,
       reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
+      {
+        ...reactRefresh.configs.vite,
+        rules: {
+          ...reactRefresh.configs.vite.rules,
+          'react-refresh/only-export-components': 'off',
+        },
+      },
     ],
     languageOptions: {
       globals: globals.browser,
