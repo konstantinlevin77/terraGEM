@@ -419,6 +419,134 @@ class GreenhouseAPITests(TestCase):
         unauth_res = self.client.get(overview_url)
         self.assertEqual(unauth_res.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_greenhouse_latest_metrics_success(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import (
+            Greenhouse,
+            SensorProfile,
+            Sensor,
+            SensorMeasurement,
+            SensorThreshold,
+            SensorTypeChoices,
+            SensorUnitChoices,
+        )
+
+        gh = Greenhouse.objects.create(user=self.user, name='Pepper Bay')
+        prof_temp = SensorProfile.objects.create(
+            name='DS18B20_Latest',
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=SensorUnitChoices.CELSIUS
+        )
+        prof_hum = SensorProfile.objects.create(
+            name='DHT22_Latest',
+            sensor_type=SensorTypeChoices.AIR_HUM,
+            unit=SensorUnitChoices.PERCENT
+        )
+
+        s_temp1 = Sensor.objects.create(greenhouse=gh, profile=prof_temp, is_active=True)
+        s_temp2 = Sensor.objects.create(greenhouse=gh, profile=prof_temp, is_active=True)
+        s_hum = Sensor.objects.create(greenhouse=gh, profile=prof_hum, is_active=True)
+
+        # Threshold: Safe 18-30, Warning 10-18 / 30-35, Critical <10 / >35
+        SensorThreshold.objects.create(
+            sensor=s_temp1,
+            warning_min=18.0,
+            warning_max=30.0,
+            critical_min=10.0,
+            critical_max=35.0,
+            is_active=True
+        )
+
+        now = timezone.now()
+
+        # Readings 20h ago (used for baseline / 24h delta)
+        SensorMeasurement.objects.create(sensor=s_temp1, value=25.6, measurement_time=now - timedelta(hours=20))
+        SensorMeasurement.objects.create(sensor=s_hum, value=57.5, measurement_time=now - timedelta(hours=20))
+
+        # Recent readings
+        SensorMeasurement.objects.create(sensor=s_temp1, value=25.0, measurement_time=now)
+        SensorMeasurement.objects.create(sensor=s_temp2, value=26.0, measurement_time=now)
+        SensorMeasurement.objects.create(sensor=s_hum, value=57.0, measurement_time=now)
+
+        url = reverse('greenhouse-latest-metrics', kwargs={'pk': gh.pk})
+        res = self.client.get(url)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['greenhouse_id'], gh.id)
+        self.assertEqual(len(res.data['metrics']), 2)
+
+        temp_metric = next(m for m in res.data['metrics'] if m['sensor_type'] == SensorTypeChoices.AIR_TEMP)
+        self.assertEqual(temp_metric['current_value'], 25.5)  # Average of 25.0 and 26.0
+        self.assertEqual(temp_metric['unit'], SensorUnitChoices.CELSIUS)
+        self.assertEqual(temp_metric['status'], 'optimal')
+        self.assertEqual(temp_metric['delta_24h'], -0.1)  # 25.5 - 25.6 = -0.1
+        self.assertGreaterEqual(len(temp_metric['sparkline']), 1)
+
+        hum_metric = next(m for m in res.data['metrics'] if m['sensor_type'] == SensorTypeChoices.AIR_HUM)
+        self.assertEqual(hum_metric['current_value'], 57.0)
+        self.assertEqual(hum_metric['delta_24h'], -0.5)  # 57.0 - 57.5 = -0.5
+        self.assertEqual(hum_metric['status'], 'optimal')
+
+    def test_greenhouse_latest_metrics_threshold_warning(self):
+        from .models import (
+            Greenhouse,
+            SensorProfile,
+            Sensor,
+            SensorMeasurement,
+            SensorThreshold,
+            SensorTypeChoices,
+            SensorUnitChoices,
+        )
+
+        gh = Greenhouse.objects.create(user=self.user, name='Hot House')
+        prof = SensorProfile.objects.create(
+            name='HotTemp',
+            sensor_type=SensorTypeChoices.AIR_TEMP,
+            unit=SensorUnitChoices.CELSIUS
+        )
+        s = Sensor.objects.create(greenhouse=gh, profile=prof, is_active=True)
+        SensorThreshold.objects.create(
+            sensor=s,
+            warning_min=18.0,
+            warning_max=30.0,
+            critical_min=10.0,
+            critical_max=40.0,
+            is_active=True
+        )
+        # Value 32.0 is in Warning band (30.0 to 40.0)
+        SensorMeasurement.objects.create(sensor=s, value=32.0)
+
+        url = reverse('greenhouse-latest-metrics', kwargs={'pk': gh.pk})
+        res = self.client.get(url)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        temp_metric = res.data['metrics'][0]
+        self.assertEqual(temp_metric['current_value'], 32.0)
+        self.assertEqual(temp_metric['status'], 'warning')
+        self.assertEqual(temp_metric['status_display'], 'Uyarı')
+
+    def test_greenhouse_latest_metrics_isolation_and_auth(self):
+        from .models import Greenhouse
+
+        user2 = User.objects.create_user(
+            username='grower_metrics_two',
+            email='mtwo@example.com',
+            password='Password123!'
+        )
+        other_gh = Greenhouse.objects.create(user=user2, name='Private Metrics House')
+        url = reverse('greenhouse-latest-metrics', kwargs={'pk': other_gh.pk})
+
+        # User1 cannot access user2's greenhouse -> 404
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Unauthenticated user -> 401
+        self.client.logout()
+        unauth_res = self.client.get(url)
+        self.assertEqual(unauth_res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
 
 
 

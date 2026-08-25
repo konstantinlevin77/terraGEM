@@ -1,3 +1,4 @@
+from collections import defaultdict
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
@@ -179,6 +180,129 @@ class GreenhouseViewSet(viewsets.ModelViewSet):
             "greenhouse_id": gh.id,
             "greenhouse_name": gh.name,
             "series": series_output
+        })
+
+    @action(detail=True, methods=['get'], url_path='latest-metrics')
+    def latest_metrics(self, request, pk=None):
+        """
+        GET /api/greenhouses/{id}/latest-metrics/
+        Returns current greenhouse-level metrics per sensor_type with status, delta vs 24h ago, and sparkline.
+        """
+        gh = self.get_object()
+        now = timezone.now()
+        twenty_four_hours_earlier = now - timezone.timedelta(hours=24)
+
+        # 1. Fetch active sensors with their profiles and thresholds
+        sensors = gh.sensors.filter(is_active=True).select_related('profile', 'threshold')
+        if not sensors.exists():
+            return Response({
+                "greenhouse_id": gh.id,
+                "greenhouse_name": gh.name,
+                "metrics": []
+            })
+
+        # Group sensors and active thresholds by sensor_type
+        sensor_types_map = {}
+        for s in sensors:
+            stype = s.profile.sensor_type
+            if stype not in sensor_types_map:
+                sensor_types_map[stype] = {
+                    "profile": s.profile,
+                    "sensors": [],
+                    "thresholds": []
+                }
+            sensor_types_map[stype]["sensors"].append(s)
+            if hasattr(s, 'threshold') and s.threshold and s.threshold.is_active:
+                sensor_types_map[stype]["thresholds"].append(s.threshold)
+
+        # 2. Fetch measurements from the last 24h
+        measurements = SensorMeasurement.objects.filter(
+            sensor__greenhouse=gh,
+            sensor__is_active=True,
+            measurement_time__gte=twenty_four_hours_earlier,
+            measurement_time__lte=now
+        ).select_related('sensor__profile').order_by('measurement_time')
+
+        # Group measurements by sensor_type and hourly bucket (0..23) for sparkline
+        hourly_readings = defaultdict(lambda: defaultdict(list))
+        for m in measurements:
+            stype = m.sensor.profile.sensor_type
+            hour_bucket = int((m.measurement_time - twenty_four_hours_earlier).total_seconds() // 3600)
+            hour_bucket = min(max(hour_bucket, 0), 23)
+            hourly_readings[stype][hour_bucket].append(m.value)
+
+        metrics = []
+        for stype, info in sensor_types_map.items():
+            profile = info["profile"]
+            type_measurements = [m for m in measurements if m.sensor.profile.sensor_type == stype]
+
+            if not type_measurements:
+                # If no measurements in 24h, check for older reading
+                latest_m = SensorMeasurement.objects.filter(
+                    sensor__in=info["sensors"]
+                ).order_by('-measurement_time').first()
+                current_val = round(latest_m.value, 1) if latest_m else None
+
+                metrics.append({
+                    "sensor_type": stype,
+                    "sensor_type_display": profile.get_sensor_type_display(),
+                    "current_value": current_val,
+                    "unit": profile.unit,
+                    "status": "optimal",
+                    "status_display": "Optimal",
+                    "delta_24h": None,
+                    "sparkline": []
+                })
+                continue
+
+            # Build 24h sparkline from hourly averages
+            sparkline = []
+            for h in sorted(hourly_readings[stype].keys()):
+                h_vals = hourly_readings[stype][h]
+                if h_vals:
+                    sparkline.append(round(sum(h_vals) / len(h_vals), 1))
+
+            # Current latest value: average across active sensors of this type
+            latest_sensor_vals = []
+            for s in info["sensors"]:
+                last_reading = next((m.value for m in reversed(type_measurements) if m.sensor_id == s.id), None)
+                if last_reading is not None:
+                    latest_sensor_vals.append(last_reading)
+
+            current_val = round(sum(latest_sensor_vals) / len(latest_sensor_vals), 1) if latest_sensor_vals else round(type_measurements[-1].value, 1)
+
+            # Delta vs 24h ago
+            oldest_val = sparkline[0] if sparkline else current_val
+            delta_24h = round(current_val - oldest_val, 1) if sparkline else 0.0
+
+            # Determine status against thresholds
+            status_val = "optimal"
+            status_display = "Optimal"
+            for th in info["thresholds"]:
+                eval_res = th.evaluate_status(current_val)
+                if eval_res == "critical":
+                    status_val = "critical"
+                    status_display = "Kritik"
+                    break
+                elif eval_res == "warning" and status_val != "critical":
+                    status_val = "warning"
+                    status_display = "Uyarı"
+
+            metrics.append({
+                "sensor_type": stype,
+                "sensor_type_display": profile.get_sensor_type_display(),
+                "current_value": current_val,
+                "unit": profile.unit,
+                "status": status_val,
+                "status_display": status_display,
+                "delta_24h": delta_24h,
+                "sparkline": sparkline
+            })
+
+        return Response({
+            "greenhouse_id": gh.id,
+            "greenhouse_name": gh.name,
+            "metrics": metrics
         })
 
 
