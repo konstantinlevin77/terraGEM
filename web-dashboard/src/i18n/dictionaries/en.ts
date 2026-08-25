@@ -8,7 +8,6 @@ export const en = {
   History: 'History',
   Settings: 'Settings',
   'All greenhouses': 'All greenhouses',
-  'All greenhouses · portfolio average': 'All greenhouses · portfolio average',
   'Choose greenhouse': 'Choose greenhouse',
   'Live feed': 'Live feed',
   Paused: 'Paused',
@@ -23,6 +22,44 @@ export const en = {
   Welcome: 'Welcome',
   'Add greenhouse': 'Add greenhouse',
   'Add sensor': 'Add sensor',
+
+  'No greenhouses yet': 'No greenhouses yet',
+  'Create your first location to start attaching sensors.':
+    'Create your first location to start attaching sensors.',
+  '{n} active sensors': '{n} active sensors',
+  'No data yet': 'No data yet',
+  'waiting for data': 'waiting for data',
+  'vs 24 h ago': '· vs 24 h ago',
+  'Environment trend': 'Environment trend',
+  'last 24 h': 'last 24 h',
+  'Toggle metrics off to isolate one series.': 'Toggle metrics off to isolate a series.',
+  Attention: 'Attention',
+  '{n} open': '{n} open',
+  'All clear': 'All clear',
+  'Every active sensor is inside its optimal range.':
+    'Every active sensor is inside its optimal range.',
+  'Today so far': 'Today so far',
+  'Latest readings': 'Latest readings',
+  'newest first': 'newest first',
+
+  Optimal: 'Optimal',
+  Watch: 'Watch',
+  Critical: 'Critical',
+
+  'Air temperature': 'Air temperature',
+  'Soil temperature': 'Soil temperature',
+  'Air humidity': 'Air humidity',
+  'Soil moisture': 'Soil moisture',
+  'CO₂': 'CO₂',
+  pH: 'pH',
+  'Light intensity': 'Light intensity',
+  Unspecified: 'Unspecified',
+  'Air temp': 'Air temp',
+  'Soil temp': 'Soil temp',
+  Humidity: 'Humidity',
+  'Soil moist': 'Soil moist',
+  Light: 'Light',
+  Other: 'Other',
 } as const;
 
 export type Dict = Record<keyof typeof en, string>;

@@ -84,3 +84,77 @@ export interface ActiveAlert {
 
 export type ActiveTab = 'overview' | 'greenhouses' | 'sensors' | 'history' | 'settings';
 export type TimeRange = '24h' | '7d' | '30d';
+export interface MetricCard {
+  sensor_type: SensorType;
+  sensor_type_display: string;
+  current_value: number | null;
+  unit: SensorUnit;
+  status: 'optimal' | 'warning' | 'critical';
+  status_display: string;
+  delta_24h: number | null;
+  sparkline: number[];
+}
+
+export interface LatestMetricsResponse {
+  greenhouse_id: number;
+  greenhouse_name: string;
+  metrics: MetricCard[];
+}
+
+export interface TimelinePoint {
+  timestamp: string;
+  avg_value: number;
+  min_value: number;
+  max_value: number;
+  reading_count: number;
+}
+
+export interface DaySeries {
+  sensor_type: SensorType;
+  timeline: TimelinePoint[];
+}
+
+export interface DayOverviewResponse {
+  greenhouse_id: number;
+  greenhouse_name: string;
+  series: DaySeries[];
+}
+
+export interface TodayMetric {
+  sensor_type: SensorType;
+  unit: SensorUnit;
+  min_value: number;
+  max_value: number;
+  avg_value: number;
+  reading_count: number;
+}
+
+export interface TodaySummaryResponse {
+  greenhouse_id: number;
+  date: string;
+  metrics: TodayMetric[];
+}
+
+export interface SensorWithLatest {
+  id: number;
+  profile: number;
+  profile_name: string;
+  sensor_type: SensorType;
+  unit: SensorUnit;
+  is_active: boolean;
+  description: string;
+  latest_measurement: {
+    id: number;
+    value: number;
+    measurement_time: string;
+  } | null;
+}
+
+export interface GreenhouseLatestResponse extends Greenhouse {
+  sensors: SensorWithLatest[];
+}
+
+export interface ActiveAlertsResponse {
+  total_active: number;
+  alerts: ActiveAlert[];
+}
