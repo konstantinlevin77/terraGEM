@@ -112,6 +112,26 @@ export const en = {
   'Optional placement note': 'Optional placement note',
   'Where is it placed? e.g. “Bed 2, 10 cm depth”': 'Where is it placed? e.g. “Bed 2, 10 cm depth”',
 
+  'Measurement explorer · last 24 hours in 10-minute intervals':
+    'Measurement explorer · last 24 hours in 10-minute intervals',
+  Metric: 'Metric',
+  'Choose a metric…': 'Choose a metric…',
+  'Pick a metric': 'Pick a metric',
+  'Select a greenhouse and metric above to explore its aggregated history.':
+    'Select a greenhouse and metric above to explore its aggregated history.',
+  '{n} intervals in window': '{n} intervals in window',
+  'Interval start': 'Interval start',
+  Average: 'Avg',
+  Min: 'Min',
+  Max: 'Max',
+  Readings: 'Readings',
+  Previous: 'Previous',
+  Next: 'Next',
+  '{a}–{b} of {n}': '{a}–{b} of {n}',
+  'Export CSV': 'Export CSV',
+  'Aggregated data comes from the 24-hour overview endpoint.':
+    'Aggregated data comes from the 24-hour overview endpoint.',
+
   Optimal: 'Optimal',
   Watch: 'Watch',
   Critical: 'Critical',

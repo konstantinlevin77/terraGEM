@@ -113,6 +113,26 @@ export const tr: Dict = {
   'Optional placement note': 'İsteğe bağlı konum notu',
   'Where is it placed? e.g. “Bed 2, 10 cm depth”': 'Nerede? örn. “Sıra 2, 10 cm derinlik”',
 
+  'Measurement explorer · last 24 hours in 10-minute intervals':
+    'Ölçüm gezgini · son 24 saat, 10 dakikalık aralıklarla',
+  Metric: 'Metrik',
+  'Choose a metric…': 'Metrik seçin…',
+  'Pick a metric': 'Metrik seçin',
+  'Select a greenhouse and metric above to explore its aggregated history.':
+    'Toplu geçmişi incelemek için yukarıdan bir sera ve metrik seçin.',
+  '{n} intervals in window': 'Bu aralıkta {n} aralık',
+  'Interval start': 'Aralık başlangıcı',
+  Average: 'Ort.',
+  Min: 'Min',
+  Max: 'Maks',
+  Readings: 'Ölçüm',
+  Previous: 'Önceki',
+  Next: 'Sonraki',
+  '{a}–{b} of {n}': '{a}–{b} / {n}',
+  'Export CSV': 'CSV indir',
+  'Aggregated data comes from the 24-hour overview endpoint.':
+    'Toplu veriler 24 saatlik genel bakış ucundan gelir.',
+
   Optimal: 'İdeal',
   Watch: 'İzlemede',
   Critical: 'Kritik',
