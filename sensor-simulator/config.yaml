@@ -1,0 +1,55 @@
+# terraGEM sensor simulator configuration.
+# Copy this file, adjust credentials, then run:
+#   python -m simulator.initialize
+#   python -m simulator.live
+
+api:
+  base_url: http://127.0.0.1:8000/api
+  username: mehmet_grower
+  password: StrongPassword123!
+
+simulation:
+  # Phase 1 backfill: how much history to create and at which step.
+  backfill_hours: 26
+  backfill_step_minutes: 5
+  # How many parallel workers push backfill measurements.
+  workers: 8
+  # Phase 2: seconds between live readings (default 5 minutes).
+  interval_seconds: 300
+
+greenhouses:
+  - name: North Tunnel
+    description: Polytunnel - tomato rows and basil trays [sim]
+    latitude: 52.09288
+    longitude: 5.10448
+    sensors:
+      air_temperature: 2
+      air_humidity: 3
+      soil_temperature: 2
+      soil_humidity: 2
+      co2: 1
+      ph: 1
+      light_intensity: 1
+
+  - name: Glasshouse A
+    description: Main glasshouse - nightshade beds [sim]
+    latitude: 51.92442
+    longitude: 4.47773
+    sensors:
+      air_temperature: 2
+      air_humidity: 2
+      soil_temperature: 2
+      soil_humidity: 3
+      co2: 1
+      light_intensity: 1
+
+  - name: Seedling Bay
+    description: Propagation shelves and cutting benches [sim]
+    latitude: 52.0907
+    longitude: 5.1213
+    sensors:
+      air_temperature: 2
+      air_humidity: 2
+      soil_temperature: 1
+      soil_humidity: 2
+      ph: 1
