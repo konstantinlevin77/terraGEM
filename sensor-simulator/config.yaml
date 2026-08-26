@@ -5,8 +5,8 @@
 
 api:
   base_url: http://127.0.0.1:8000/api
-  username: mehmet_grower
-  password: StrongPassword123!
+  username: sim_user
+  password: SimPass123!
 
 simulation:
   # Phase 1 backfill: how much history to create and at which step.

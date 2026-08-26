@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>terraGEM — We'll be here soon</title>
+<meta name="description" content="terraGEM — Greenhouse Environment Management. We're cultivating something precise. We'll be here soon.">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="%233a7d4a"/><path d="M16 25v-7" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M16 17.2C11.2 17.2 8.8 14 8.8 8.6c4.8 0 7.2 3.2 7.2 8.6z" fill="white"/><path d="M16 14.4c0-4 2.6-5.8 7.2-5.8 0 4.6-2.6 5.8-7.2 5.8z" fill="white" opacity=".65"/></svg>'>
+<style>
+  :root{
+    --bg: oklch(99% 0.002 240);
+    --surface: oklch(100% 0 0);
+    --fg: oklch(18% 0.012 250);
+    --muted: oklch(54% 0.012 250);
+    --border: oklch(92% 0.005 250);
+    --accent: oklch(48% 0.11 152);
+    --accent-hover: oklch(55% 0.11 152);
+    --accent-soft: oklch(96% 0.02 152);
+    --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    display:grid;
+    place-items:center;
+    min-height:100vh;
+    padding:24px;
+  }
+  ::selection{background:var(--accent-soft)}
+
+  /* page wrapper centers card with footer below */
+  .wrap{
+    width:100%;
+    max-width:480px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:20px;
+  }
+
+  .card{
+    width:100%;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:36px 36px 32px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+  }
+
+  .mark{
+    width:40px;
+    height:40px;
+    border-radius:10px;
+    background:var(--accent);
+    display:grid;
+    place-items:center;
+    flex-shrink:0;
+  }
+
+  .eyebrow{
+    margin-top:18px;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    line-height:1;
+  }
+
+  h1{
+    margin-top:14px;
+    font-family:var(--font-display);
+    font-size:26px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+    line-height:1.15;
+    color:var(--fg);
+  }
+
+  .lede{
+    margin-top:12px;
+    font-size:14.5px;
+    line-height:1.6;
+    color:var(--muted);
+    max-width:36ch;
+  }
+
+  .divider{
+    width:100%;
+    height:1px;
+    background:var(--border);
+    margin:28px 0 0;
+  }
+
+  .meta-row{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    padding-top:16px;
+    flex-wrap:wrap;
+  }
+
+  .meta-left{
+    text-align:left;
+    min-width:0;
+  }
+  .meta-label{
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .meta-value{
+    margin-top:3px;
+    font-family:var(--font-mono);
+    font-variant-numeric:tabular-nums;
+    font-size:12.5px;
+    font-weight:500;
+    color:var(--fg);
+    white-space:nowrap;
+  }
+  .meta-value.muted{color:var(--muted);font-family:var(--font-body);font-weight:400;font-size:12.5px}
+
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.02em;
+    padding:6px 10px;
+    border-radius:999px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    border:1px solid color-mix(in oklab, var(--accent) 10%, transparent);
+    white-space:nowrap;
+  }
+  .badge-dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--accent);
+    opacity:0.9;
+  }
+
+  .gh-link{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 14px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--fg);
+    font-size:13px;
+    font-weight:550;
+    letter-spacing:-0.01em;
+    text-decoration:none;
+    line-height:1;
+    transition:background .12s, border-color .12s, color .12s;
+  }
+  .gh-link:hover{
+    background:oklch(97.3% 0.003 240);
+    border-color:oklch(86% 0.007 250);
+    color:var(--fg);
+  }
+  .gh-link:focus-visible{outline:2px solid oklch(60% 0.11 152);outline-offset:2px}
+  .gh-link svg{flex-shrink:0}
+
+  .site-foot{
+    font-size:11.5px;
+    color:var(--muted);
+    text-align:center;
+    line-height:1.4;
+  }
+  .site-foot a{
+    color:var(--muted);
+    text-decoration:none;
+    border-bottom:1px solid transparent;
+    transition:border-color .12s, color .12s;
+  }
+  .site-foot a:hover{color:var(--fg);border-bottom-color:var(--border)}
+  .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+  /* subtle entrance — respects minimal motion, no shadow */
+  @media (prefers-reduced-motion: no-preference){
+    .card{animation:rise .45s cubic-bezier(.2,0,0,1)}
+    @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  }
+
+  @media (max-width:480px){
+    body{padding:16px}
+    .card{padding:28px 22px 24px;border-radius:14px}
+    h1{font-size:22px}
+    .lede{font-size:14px}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="card" role="main" aria-labelledby="title">
+      <div class="mark" aria-hidden="true">
+        <!-- faceted gem-sprout logomark — the one decisive flourish per brand-spec -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 21v-7" stroke="white" stroke-width="1.9" stroke-linecap="round"/>
+          <path d="M12 14.2C7.2 14.2 4.8 11 4.8 5.6 9.6 5.6 12 8.8 12 14.2Z" fill="white"/>
+          <path d="M12 11.4c0-4 2.6-5.8 7.2-5.8 0 4.6-2.6 5.8-7.2 5.8Z" fill="white" opacity="0.65"/>
+        </svg>
+      </div>
+
+      <div class="eyebrow">terraGEM &nbsp;·&nbsp; Greenhouse Environment Management</div>
+
+      <h1 id="title">We'll be here soon.</h1>
+
+      <p class="lede">
+        We're cultivating a quiet, precise home for your greenhouse data — air, soil, and everything in between. Stay rooted. We're sprouting shortly.
+      </p>
+
+      <div class="divider" role="separator"></div>
+
+      <div class="meta-row">
+        <span class="badge" aria-label="Status: Coming soon">
+          <span class="badge-dot" aria-hidden="true"></span>
+          Coming soon
+        </span>
+        <a class="gh-link" href="https://github.com/konstantinlevin77/terraGEM" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </main>
+
+    <footer class="site-foot">
+      <span class="mono">© 2026 terraGEM</span>
+    </footer>
+  </div>
+</body>
+</html>
