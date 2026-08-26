@@ -133,6 +133,18 @@ export const tr: Dict = {
   'Aggregated data comes from the 24-hour overview endpoint.':
     'Toplu veriler 24 saatlik genel bakış ucundan gelir.',
 
+  'Profile, language and session': 'Profil, dil ve oturum',
+  Company: 'Şirket',
+  Phone: 'Telefon',
+  Session: 'Oturum',
+  'Signed in as': 'Giriş yapan',
+  'Token storage': 'Token saklama',
+  'This browser (localStorage)': 'Bu tarayıcı (localStorage)',
+  'Editable profile fields will map to PATCH /api/auth/me/ later.':
+    'Düzenlenebilir profil alanları, API desteklediğinde PATCH /api/auth/me/ adresine bağlanacak.',
+  Language: 'Dil',
+  'Applies instantly · stored in this browser': 'Anında uygulanır · bu tarayıcıda saklanır',
+
   Optimal: 'İdeal',
   Watch: 'İzlemede',
   Critical: 'Kritik',

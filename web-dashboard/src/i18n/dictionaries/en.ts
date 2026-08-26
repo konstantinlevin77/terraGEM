@@ -132,6 +132,18 @@ export const en = {
   'Aggregated data comes from the 24-hour overview endpoint.':
     'Aggregated data comes from the 24-hour overview endpoint.',
 
+  'Profile, language and session': 'Profile, language and session',
+  Company: 'Company',
+  Phone: 'Phone',
+  Session: 'Session',
+  'Signed in as': 'Signed in as',
+  'Token storage': 'Token storage',
+  'This browser (localStorage)': 'This browser (localStorage)',
+  'Editable profile fields will map to PATCH /api/auth/me/ later.':
+    'Editable profile fields will map to PATCH /api/auth/me/ once the API supports it.',
+  Language: 'Language',
+  'Applies instantly · stored in this browser': 'Applies instantly · stored in this browser',
+
   Optimal: 'Optimal',
   Watch: 'Watch',
   Critical: 'Critical',
