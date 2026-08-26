@@ -266,7 +266,12 @@ function AddSensorModal({
 
   const createMut = useMutation({
     mutationFn: () =>
-      sensorApi.create({ greenhouse, profile: profileValue, description: description.trim() }),
+      sensorApi.create({
+        greenhouse,
+        profile: profileValue,
+        description: description.trim(),
+        is_active: true,
+      }),
     onSuccess: onCreated,
     onError: (err) => setError(err instanceof ApiError ? err.message : String(err)),
   });

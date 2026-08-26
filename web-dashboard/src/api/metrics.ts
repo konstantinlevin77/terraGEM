@@ -16,7 +16,7 @@ export const metricsApi = {
   },
 
   todaySummary(greenhouseId: number): Promise<TodaySummaryResponse> {
-    return request<TodaySummaryResponse>(`/greenhouses/${greenhouseId}/today-summary/`);
+    return request<TodaySummaryResponse>(`/greenhouses/${greenhouseId}/today_summary/`);
   },
 
   latestSnapshot(greenhouseId: number): Promise<GreenhouseLatestResponse> {
