@@ -44,11 +44,13 @@ export interface SensorProfile {
 export interface Sensor {
   id: number;
   greenhouse: number;
+  profile: number;
   sensor_type: SensorType;
   sensor_brand: string;
   unit: SensorUnit;
   is_active: boolean;
   description: string;
+  profile_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -164,4 +166,19 @@ export interface GreenhousePayload {
   description: string;
   latitude: number | null;
   longitude: number | null;
+}
+
+export interface SensorProfileFull extends SensorProfile {
+  sensor_type_display?: string;
+  unit_display?: string;
+}
+
+export interface SensorThreshold {
+  id: number;
+  sensor: number;
+  warning_min: number;
+  warning_max: number;
+  critical_min: number;
+  critical_max: number;
+  is_active: boolean;
 }

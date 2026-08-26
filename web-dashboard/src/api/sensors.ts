@@ -16,4 +16,8 @@ export const sensorApi = {
   create(payload: SensorPayload): Promise<Sensor> {
     return request<Sensor>('/sensors/', { method: 'POST', body: payload });
   },
+
+  update(id: number, payload: Partial<SensorPayload>): Promise<Sensor> {
+    return request<Sensor>(`/sensors/${id}/`, { method: 'PATCH', body: payload });
+  },
 };
